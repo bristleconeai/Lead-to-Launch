@@ -243,7 +243,7 @@ td .pips{ font-family:var(--hud); font-size:19px; color:var(--ember); letter-spa
       <p>Every deal is a voyage, and you have sailed it many times.</p>
       <p>Account Executives read the stars and chart the course. Client Partners keep the ship whole through every storm.</p>
       <p>But somewhere between the first lead and the final launch, the old chart was torn into six.</p>
-      <p>For six days, a riddle will surface at noon. Solve it, and a fragment returns to your hands.</p>
+      <p>For three days, two riddles will surface each day. Solve each one, and a fragment returns to your hands.</p>
       <p><em>Gather all six, and the chart will show you what lies beneath.</em></p>
     </div>
     <div class="reveal-late" id="ctaWrap">
@@ -355,20 +355,61 @@ td .pips{ font-family:var(--hud); font-size:19px; color:var(--ember); letter-spa
 const CONFIG = {
   // First business day of the hunt (YYYY-MM-DD). Riddle I unlocks at noon that day.
   startDate: "2026-09-05",
-  unlockTime: "12:00",          // 24h clock, in the timezone below
+  unlockTimes: ["12:00", "16:00"],   // two riddles per business day, 24h clock
   utcOffsetMinutes: 330,        // India Standard Time (UTC+5:30)
   holidays: [],                 // business days to skip, e.g. ["2026-10-20"]
   // What the assembled QR code opens. Replace with your real link.
   qrText: "https://youtu.be/QDia3e12czc?si=K8Fd8UeKn5qFU-M6",
   // Six riddles. Each has exactly four lines and one or more accepted answers.
   // Answers ignore capitals, spaces and punctuation.
-  puzzles: [
-    { lines: ["Placeholder riddle line one for the Prospecting Plains,", "placeholder line two, where the lighthouse turns,", "placeholder line three, a single X that glows,", "placeholder line four. What am I?"], answers: ["plains"] },
-    { lines: ["Placeholder riddle line one for the Discovery Docks,", "placeholder line two, a ship that waits,", "placeholder line three, a log decoded,", "placeholder line four. What am I?"], answers: ["docks"] },
-    { lines: ["Placeholder riddle line one for the Proposal Peaks,", "placeholder line two, a climb of drafts,", "placeholder line three, a flag at the summit,", "placeholder line four. What am I?"], answers: ["peaks"] },
-    { lines: ["Placeholder riddle line one for the Automation Bridge,", "placeholder line two, gears that turn,", "placeholder line three, crates that glide,", "placeholder line four. What am I?"], answers: ["bridge"] },
-    { lines: ["Placeholder riddle line one for the Negotiation Narrows,", "placeholder line two, here be hagglers,", "placeholder line three, a passage opens,", "placeholder line four. What am I?"], answers: ["narrows"] },
-    { lines: ["Placeholder riddle line one for the Delivery Delta,", "placeholder line two, a tower stands,", "placeholder line three, the countdown ends,", "placeholder line four. What am I?"], answers: ["delta"] }
+    puzzles: [
+    { lines: [
+        "Every deal begins with me, a name that might say yes,",
+        "I can be hot, I can be cold, I can be a total mess.",
+        "Qualify me well, and I could become a sale,",
+        "What am I, Traveler, that starts every sales tale?"
+      ],
+      answers: ["lead", "leads", "a lead", "the lead", "sales lead", "prospect", "prospects"] },
+
+    { lines: [
+        "The more of me you ask, the more the client will share,",
+        "The open kind work best of all, so ask me with care.",
+        "In discovery I come first, before you pitch a thing,",
+        "What am I, the clues that every good meeting brings?"
+      ],
+      answers: ["questions", "question", "asking questions", "discovery questions", "open questions"] },
+
+    { lines: [
+        "I have plenty of slides, but no playground at all,",
+        "On a ship I'm the floor; in a meeting, I'm up on the wall.",
+        "You build me for every pitch, so keep me short and neat,",
+        "What am I, the thing on screen when you and your client meet?"
+      ],
+      answers: ["deck", "a deck", "the deck", "slide deck", "pitch deck", "slides", "presentation", "ppt", "powerpoint"] },
+
+    { lines: [
+        "I have cells but I'm no prison, and rows but I'm no boat,",
+        "Copy, paste, and copy again, the manual work I promote.",
+        "Automation sets you free from updating me by hand,",
+        "What am I, the grid of numbers every team knows firsthand?"
+      ],
+      answers: ["spreadsheet", "spreadsheets", "excel", "sheet", "sheets", "excel sheet", "google sheets"] },
+
+    { lines: [
+        "At quarter's end, the client always asks for me,",
+        "I make the price a little smaller, but I'm never free.",
+        "Give me away too easily and your margin walks the plank,",
+        "What am I, Traveler, the cut that hits the bank?"
+      ],
+      answers: ["discount", "discounts", "a discount", "price cut", "price reduction"] },
+
+    { lines: [
+        "I'm a line, but you can't draw me with a pen,",
+        "Miss me once, and the client may not trust you again.",
+        "Every project has me, marked in red upon the plan,",
+        "What am I, Traveler? Deliver before me if you can!"
+      ],
+      answers: ["deadline", "deadlines", "the deadline", "due date", "timeline"] }
   ]
 };
 /* ===================================================================== */
@@ -411,11 +452,15 @@ let simNow = null;      // owner-only time travel
 function now(){ return simNow != null ? simNow : Date.now() + serverOffset; }
 const SCHED = (() => {
   const [y,m,d] = CONFIG.startDate.split("-").map(Number);
-  const [hh,mm] = CONFIG.unlockTime.split(":").map(Number);
+  const times = (CONFIG.unlockTimes || [CONFIG.unlockTime || "12:00"])
+    .map(s=>s.split(":").map(Number))
+    .sort((a,b)=>(a[0]*60+a[1])-(b[0]*60+b[1]));
   const out=[]; let t=Date.UTC(y,m-1,d); let guard=0;
   while(out.length<6 && guard++<60){
     const dt=new Date(t), dow=dt.getUTCDay(), iso=dt.toISOString().slice(0,10);
-    if(dow!==0 && dow!==6 && !CONFIG.holidays.includes(iso)) out.push(t + (hh*60+mm - CONFIG.utcOffsetMinutes)*60000);
+    if(dow!==0 && dow!==6 && !CONFIG.holidays.includes(iso)){
+      for(const [hh,mm] of times){ if(out.length<6) out.push(t + (hh*60+mm - CONFIG.utcOffsetMinutes)*60000); }
+    }
     t+=86400000;
   }
   return out;
@@ -427,12 +472,13 @@ const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 function whenLabel(ms){
   const a=localParts(now()), b=localParts(ms);
   const dayA=Date.UTC(a.y,a.m,a.d), dayB=Date.UTC(b.y,b.m,b.d), diff=Math.round((dayB-dayA)/86400000);
-  if(diff<=0) return "later today";
-  if(diff===1) return "tomorrow";
+  if(diff<=0) return "later today at "+fmtTime(ms);
+  if(diff===1) return "tomorrow at "+fmtTime(ms);
   if(diff<7) return "on " + DOW[b.dow];
   return "on " + DOW[b.dow] + ", " + b.d + " " + MON[b.m];
 }
-function fmtDate(ms){ const b=localParts(ms); return DOW[b.dow].slice(0,3)+" "+b.d+" "+MON[b.m]+", "+CONFIG.unlockTime; }
+function fmtTime(ms){ const d=new Date(ms + CONFIG.utcOffsetMinutes*60000); let h=d.getUTCHours(), m=d.getUTCMinutes(); const ap=h>=12?"PM":"AM"; h=h%12||12; return h+(m?":"+String(m).padStart(2,"0"):"")+" "+ap; }
+function fmtDate(ms){ const b=localParts(ms); return DOW[b.dow].slice(0,3)+" "+b.d+" "+MON[b.m]+", "+fmtTime(ms); }
 function fmtLeft(ms){ if(ms<0) ms=0; const s=Math.floor(ms/1000), d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60), x=s%60; const p=n=>String(n).padStart(2,"0"); return (d? d+"d ":"")+p(h)+"h "+p(m)+"m "+p(x)+"s"; }
 
 /* ---------------- storage: shared db when available, device as fallback ---------------- */
@@ -786,7 +832,7 @@ function renderVoyage(){
     body.append(
       el("p",{class:"region",text:"THE TIDE HAS NOT TURNED"}),
       el("h2",{class:"title",text:"Your first riddle is on its way"}),
-      el("p",{class:"blurb",text:"Rest easy, "+(Store.profile?Store.profile.pirateName:"traveller")+". The first fragment lies in the Prospecting Plains, and its riddle surfaces at noon on "+fmtDate(SCHED[0]).replace(", "+CONFIG.unlockTime,"")+"."}),
+      el("p",{class:"blurb",text:"Rest easy, "+(Store.profile?Store.profile.pirateName:"traveller")+". The first fragment lies in the Prospecting Plains, and its riddle surfaces at "+fmtTime(SCHED[0])+" on "+fmtDate(SCHED[0]).split(",")[0]+"."}),
       el("div",{class:"countdown"},[ el("span",{text:"Riddle I surfaces in"}), el("b",{id:"tick"}) ])
     );
     startTicker($("#tick"), SCHED[0], ()=>render());
@@ -819,7 +865,7 @@ function renderVoyage(){
     el("p",{class:"blurb",text: first? "The first fragment lies in the Prospecting Plains, where every voyage begins. "+REGIONS[0].blurb : REGIONS[i].blurb})
   );
   const slip=el("div",{class:"slip"});
-  const corner=el("div",{class:"hud-corner",html:"CIPHER<br>DAY 0"+(i+1)});
+  const corner=el("div",{class:"hud-corner",html:"CIPHER "+ROMAN[i]+"<br>DAY 0"+(Math.floor(i/(CONFIG.unlockTimes||[1]).length)+1)});
   corner.style.clipPath=stepClip(); slip.append(corner);
   const rid=el("p",{class:"riddle"}); pz.lines.forEach(l=>rid.append(el("span",{text:l}))); slip.append(rid);
   slip.append(el("div",{class:"sig",text:"Fragment "+ROMAN[i]+" of VI"}));
@@ -964,7 +1010,7 @@ function setupOwner(){
   $("#btnQuarters").hidden=false;
   const sel=$("#simSel"); sel.innerHTML="";
   sel.append(el("option",{value:"real",text:"Real time"}), el("option",{value:"0",text:"Before riddle I"}));
-  for(let i=0;i<6;i++) sel.append(el("option",{value:String(i+1),text:"Day "+ROMAN[i]+" afternoon ("+REGIONS[i].name+")"}));
+  for(let i=0;i<6;i++) sel.append(el("option",{value:String(i+1),text:"Day "+ROMAN[i]+" open ("+REGIONS[i].name+")"}));
   sel.onchange=()=>{ const v=sel.value; simNow = v==="real"? null : v==="0"? SCHED[0]-3600000 : SCHED[+v-1]+60000; const b=$("#simBanner"); b.classList.toggle("on", simNow!=null); b.textContent = simNow!=null? "TIME TRAVEL: "+sel.options[sel.selectedIndex].text : ""; lastWin=-1; current=-1; render(); };
   $("#schedLine").textContent="Unlock schedule: "+SCHED.map((t,i)=>ROMAN[i]+" "+fmtDate(t)).join("; ")+" (IST).";
   $("#btnResetMe").onclick=async()=>{ if(!Store.profile) return; Store.profile.solved={}; Store.profile.attempts={}; await Store.save(); lastWin=-1; current=-1; finBackBuilt=false; render(); loadRoster(); };
